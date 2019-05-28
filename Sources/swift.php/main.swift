@@ -70,14 +70,18 @@ extension ArrayElementListSyntax: Generatable {
     debug(node: self)
   }
 }
-extension ArrayElementSyntax: Generatable {
-  func generate() {
-    debug(node: self)
-  }
-}
 extension ArrayExprSyntax: Generatable {
   func generate() {
-    debug(node: self)
+    p("array(")
+    var first = true
+    for elem in self.elements {
+      if !first {
+        p(", ")
+      }
+      first = false
+      visit(node: elem)
+    }
+    p(")")
   }
 }
 extension ArrayTypeSyntax: Generatable {
@@ -270,16 +274,6 @@ extension CompositionTypeSyntax: Generatable {
     debug(node: self)
   }
 }
-extension ConditionElementListSyntax: Generatable {
-  func generate() {
-    debug(node: self)
-  }
-}
-extension ConditionElementSyntax: Generatable {
-  func generate() {
-    debug(node: self)
-  }
-}
 extension ConformanceRequirementSyntax: Generatable {
   func generate() {
     debug(node: self)
@@ -332,17 +326,24 @@ extension DeinitializerDeclSyntax: Generatable {
 }
 extension DictionaryElementListSyntax: Generatable {
   func generate() {
-    debug(node: self)
+    p("array(")
+    var first = true
+    for child in children {
+      if first {
+        first = false
+      } else {
+        p(", ")
+      }
+      visit(node: child)
+    }
+    p(")")
   }
 }
 extension DictionaryElementSyntax: Generatable {
   func generate() {
-    debug(node: self)
-  }
-}
-extension DictionaryExprSyntax: Generatable {
-  func generate() {
-    debug(node: self)
+    visit(node: self.keyExpression)
+    p(" => ")
+    visit(node: self.valueExpression)
   }
 }
 extension DictionaryTypeSyntax: Generatable {
@@ -451,7 +452,25 @@ extension ForcedValueExprSyntax: Generatable {
 }
 extension ForInStmtSyntax: Generatable {
   func generate() {
-    debug(node: self)
+    p("foreach (")
+    visit(node: self.sequenceExpr)
+    p("as ")
+    if let iden = self.pattern as? IdentifierPatternSyntax {
+      visit(node: iden)
+    } else if let tuple = self.pattern as? TuplePatternSyntax {
+      var first = true
+      for elem in tuple.elements {
+        if first {
+          first = false
+        } else {
+          p(" => ")
+        }
+        p("$")
+        p(elem.pattern)
+      }
+    }
+    p(")")
+    visit(node: self.body)
   }
 }
 extension FunctionCallArgumentListSyntax: Generatable {
@@ -473,6 +492,8 @@ extension FunctionCallExprSyntax: Generatable {
   func generate() {
     if let iden = self.calledExpression as? IdentifierExprSyntax {
       p(iden.identifier)
+    } else if let receiver = self.calledExpression as? MemberAccessExprSyntax {
+      visit(node: receiver)
     } else {
       p("(")
       visit(node: self.calledExpression)
@@ -612,7 +633,14 @@ extension IfConfigDeclSyntax: Generatable {
 }
 extension IfStmtSyntax: Generatable {
   func generate() {
-    debug(node: self)
+    p("if (")
+    visit(node: self.conditions)
+    p(") ")
+    visit(node: self.body)
+    if let elseBlock = self.elseBody {
+      p(" else ")
+      visit(node: elseBlock)
+    }
   }
 }
 extension ImplementsAttributeArgumentsSyntax: Generatable {
@@ -697,7 +725,13 @@ extension MatchingPatternConditionSyntax: Generatable {
 }
 extension MemberAccessExprSyntax: Generatable {
   func generate() {
-    debug(node: self)
+    if let receiver = self.base {
+      visit(node: receiver)
+    } else {
+      p("UNKNOWN")
+    }
+    p(".")
+    p(self.name)
   }
 }
 extension MemberDeclBlockSyntax: Generatable {
